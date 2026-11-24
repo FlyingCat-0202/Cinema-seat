@@ -7,7 +7,7 @@ import androidx.compose.ui.geometry.Rect
  * - Hàng A, B, C (Ghế Thường): 3 hàng x 15 ghế (đánh số 15 -> 1 từ trái sang phải) = 45 ghế
  * - Hàng D, E, F, G, H, J, K, L (Ghế VIP, bỏ qua chữ I): 8 hàng x 15 ghế = 120 ghế
  * - Hàng S (Ghế Đôi / Sweetbox): 1 hàng x 9 ghế đôi = 9 ghế đôi
- * Tổng: 174 ghế + 1 Màn hình + 2 Lối đi hai bên = 177 đối tượng (đạt chuẩn 150–250 đối tượng).
+ * Tổng: 174 ghế + 1 Màn hình + 3 Lối đi (trái, phải, và hành lang Ra/Vào phía trên) = 178 đối tượng (đạt chuẩn 150–250 đối tượng).
  */
 object CinemaLayoutGenerator {
 
@@ -48,7 +48,7 @@ object CinemaLayoutGenerator {
             bottom = 104f
         )
 
-        var currentY = 185f
+        var currentY = 215f
 
         // --- KHU 1: GHẾ THƯỜNG (Hàng A, B, C - 3 hàng x 15 = 45 ghế) ---
         val standardRows = listOf("A", "B", "C")
@@ -115,27 +115,41 @@ object CinemaLayoutGenerator {
         }
         currentY += SEAT_HEIGHT + ROW_GAP_Y
 
-        val seatsTop = 180f
+        val seatsTop = 210f
         val seatsBottom = currentY + 8f
         val worldHeight = seatsBottom + 56f
+        val corridorLeft = LEFT_MARGIN - 12f
+        val corridorRight = contentRight + 20f + SIDE_AISLE_WIDTH + 12f
 
         val entrances = listOf(
+            // 1. Lối đi dọc bên trái (mũi tên 2 chiều lên/xuống)
             Entrance(
-                label = "LỐI ĐI",
+                label = "LỐI ĐI TRÁI",
                 bounds = Rect(
-                    left = LEFT_MARGIN - 12f,
+                    left = corridorLeft,
                     top = seatsTop,
                     right = LEFT_MARGIN + SIDE_AISLE_WIDTH,
                     bottom = seatsBottom
                 )
             ),
+            // 2. Lối đi dọc bên phải (mũi tên 2 chiều lên/xuống)
             Entrance(
-                label = "LỐI ĐI",
+                label = "LỐI ĐI PHẢI",
                 bounds = Rect(
                     left = contentRight + 20f,
                     top = seatsTop,
-                    right = contentRight + 20f + SIDE_AISLE_WIDTH + 12f,
+                    right = corridorRight,
                     bottom = seatsBottom
+                )
+            ),
+            // 3. Hành lang ngang phía trên (gom cả đầu Ra bên trái & đầu Vào bên phải thành 1 Entrance)
+            Entrance(
+                label = "RA / VÀO",
+                bounds = Rect(
+                    left = corridorLeft,
+                    top = 148f,
+                    right = corridorRight,
+                    bottom = 198f
                 )
             )
         )

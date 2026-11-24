@@ -14,14 +14,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
+import com.example.cinemaseat.R
 import com.example.cinemaseat.model.CinemaLayoutGenerator
 import com.example.cinemaseat.model.Seat
 import com.example.cinemaseat.model.SeatStatus
@@ -57,6 +63,18 @@ fun CinemaCanvas(
             letterSpacing = with(density) { 4f.toSp() }
         )
     }
+    val entranceTextStyle = remember(density) {
+        val fontSp = with(density) { 18f.toSp() }
+        TextStyle(
+            color = Color(0xFF64748B),
+            fontSize = fontSp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = with(density) { 1.5f.toSp() }
+        )
+    }
+
+    val monoarrow = rememberVectorPainter(ImageVector.vectorResource(R.drawable.mono_direction_arrow))
+    val biarrow = rememberVectorPainter(ImageVector.vectorResource(R.drawable.bidirection_arrow))
 
     Box(
         modifier = modifier
@@ -126,6 +144,80 @@ fun CinemaCanvas(
                         )
                     )
                 }
+
+                for (entrance in hall.entrances) {
+                    if (entrance.label == "RA / VÀO") {
+                        val arrowW = 80f
+                        val arrowH = 40f
+
+                        // 1. Mũi tên đơn trái + chữ "LỐI RA" phía trên
+                        val leftArrowX = entrance.bounds.left + arrowW
+                        translate(left = leftArrowX, top = entrance.bounds.top) {
+                            with(monoarrow) {
+                                draw(size = Size(arrowW, arrowH))
+                            }
+                        }
+
+                        val exitText = textMeasurer.measure("LỐI RA", style = entranceTextStyle)
+                        drawText(
+                            textLayoutResult = exitText,
+                            topLeft = Offset(
+                                x = leftArrowX + arrowW / 2f - exitText.size.width / 2f,
+                                y = entrance.bounds.top - exitText.size.height + 2f
+                            )
+                        )
+
+                        // 2. Mũi tên đơn phải + chữ "LỐI VÀO" phía trên
+                        val rightArrowX = entrance.bounds.right - arrowW * 2
+                        translate(left = rightArrowX, top = entrance.bounds.top) {
+                            with(monoarrow) {
+                                draw(size = Size(arrowW, arrowH))
+                            }
+                        }
+
+                        val entryText = textMeasurer.measure("LỐI VÀO", style = entranceTextStyle)
+                        drawText(
+                            textLayoutResult = entryText,
+                            topLeft = Offset(
+                                x = rightArrowX + arrowW / 2f - entryText.size.width / 2f,
+                                y = entrance.bounds.top - entryText.size.height + 2f
+                            )
+                        )
+                    } else {
+                        val arrowWidth = 35f
+                        val arrowHeight = 600f
+
+                        translate(
+                            left = entrance.bounds.center.x - arrowWidth / 2f,
+                            top = entrance.bounds.center.y - arrowHeight / 2f
+                        ) {
+                            with(biarrow) {
+                                draw(size = Size(arrowWidth, arrowHeight))
+                            }
+                        }
+
+                        val isLeftAisle = entrance.label == "LỐI ĐI TRÁI"
+                        val rotationAngle = if (isLeftAisle) -90f else 90f
+                        val sideOffset = if (isLeftAisle) -24f else 24f
+                        val labelCenter = Offset(
+                            x = entrance.bounds.center.x + sideOffset,
+                            y = entrance.bounds.center.y
+                        )
+                        val aisleText = textMeasurer.measure("LỐI ĐI", style = entranceTextStyle)
+
+                        rotate(degrees = rotationAngle, pivot = labelCenter) {
+                            drawText(
+                                textLayoutResult = aisleText,
+                                topLeft = Offset(
+                                    x = labelCenter.x - aisleText.size.width / 2f,
+                                    y = labelCenter.y - aisleText.size.height / 2f
+                                )
+                            )
+                        }
+                    }
+                }
+
+
             }
         }
     }
