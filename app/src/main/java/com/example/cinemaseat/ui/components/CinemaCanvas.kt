@@ -2,11 +2,19 @@ package com.example.cinemaseat.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -19,6 +27,8 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
@@ -26,6 +36,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.example.cinemaseat.R
 import com.example.cinemaseat.model.CinemaLayoutGenerator
@@ -76,22 +87,96 @@ fun CinemaCanvas(
     val monoarrow = rememberVectorPainter(ImageVector.vectorResource(R.drawable.mono_direction_arrow))
     val biarrow = rememberVectorPainter(ImageVector.vectorResource(R.drawable.bidirection_arrow))
 
+    val currentUiState by rememberUpdatedState(uiState)
+    val currentOnSeatTap by rememberUpdatedState(onSeatTap)
+
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var initialized by remember { mutableStateOf(false) }
+
+    fun clampOffset(candidate: Offset, targetScale: Float, size: IntSize): Offset {
+        if (size.width <= 0 || size.height <= 0) return candidate
+        val scaledW = hall.worldWidth * targetScale
+        val scaledH = hall.worldHeight * targetScale
+        val marginX = size.width * 0.25f
+        val marginY = size.height * 0.25f
+
+        val minX = size.width - scaledW - marginX
+        val maxX = marginX
+        val minY = size.height - scaledH - marginY
+        val maxY = marginY
+
+        return Offset(
+            x = candidate.x.coerceIn(minOf(minX, maxX), maxOf(minX, maxX)),
+            y = candidate.y.coerceIn(minOf(minY, maxY), maxOf(minY, maxY))
+        )
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.White)
+            .clipToBounds()
+            .onSizeChanged { newSize ->
+                canvasSize = newSize
+                if (newSize.width > 0 && newSize.height > 0) {
+                    val fitScale = minOf(
+                        newSize.width / hall.worldWidth,
+                        newSize.height / hall.worldHeight
+                    ) * 0.96f
+                    if (!initialized) {
+                        scale = fitScale
+                        offset = Offset(
+                            x = (newSize.width - hall.worldWidth * fitScale) / 2f,
+                            y = (newSize.height - hall.worldHeight * fitScale) / 2f
+                        )
+                        initialized = true
+                    } else {
+                        offset = clampOffset(offset, scale, newSize)
+                    }
+                }
+            }
+            // Pan (kéo 1 ngón) + Pinch-to-Zoom (2 ngón quanh tâm centroid)
+            .pointerInput(hall) {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    if (canvasSize.width <= 0 || canvasSize.height <= 0) return@detectTransformGestures
+                    val fitScale = minOf(
+                        canvasSize.width / hall.worldWidth,
+                        canvasSize.height / hall.worldHeight
+                    ) * 0.96f
+                    val minScale = (fitScale * 0.75f).coerceAtLeast(0.2f)
+                    val maxScale = (fitScale * 3.5f).coerceAtLeast(2.0f)
+
+                    val oldScale = scale
+                    val newScale = (oldScale * zoom).coerceIn(minScale, maxScale)
+                    val zoomRatio = newScale / oldScale
+
+                    val rawOffset = centroid - (centroid - offset) * zoomRatio + pan
+                    scale = newScale
+                    offset = clampOffset(rawOffset, newScale, canvasSize)
+                }
+            }
+            // Tap Hit-testing: chạm chọn ghế chuẩn xác sau khi Pan hoặc Zoom
+            .pointerInput(hall) {
+                detectTapGestures { tapOffset ->
+                    val worldPoint = Offset(
+                        x = (tapOffset.x - offset.x) / scale,
+                        y = (tapOffset.y - offset.y) / scale
+                    )
+                    val hitSeat = currentUiState.hallLayout.seats.firstOrNull { seat ->
+                        seat.bounds.contains(worldPoint)
+                    }
+                    if (hitSeat != null) {
+                        currentOnSeatTap(hitSeat)
+                    }
+                }
+            }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val fitScale = minOf(
-                size.width / hall.worldWidth,
-                size.height / hall.worldHeight
-            ) * 0.96f
-            val offsetX = (size.width - hall.worldWidth * fitScale) / 2f
-            val offsetY = (size.height - hall.worldHeight * fitScale) / 2f
-
             withTransform({
-                translate(left = offsetX, top = offsetY)
-                scale(scaleX = fitScale, scaleY = fitScale, pivot = Offset.Zero)
+                translate(left = offset.x, top = offset.y)
+                scale(scaleX = scale, scaleY = scale, pivot = Offset.Zero)
             }) {
                 val screen = hall.screenBounds
                 screenPath.reset()
