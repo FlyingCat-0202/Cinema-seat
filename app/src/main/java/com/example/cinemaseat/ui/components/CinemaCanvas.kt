@@ -1,5 +1,8 @@
 package com.example.cinemaseat.ui.components
 
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -7,6 +10,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +48,7 @@ import com.example.cinemaseat.model.Seat
 import com.example.cinemaseat.model.SeatStatus
 import com.example.cinemaseat.model.SeatType
 import com.example.cinemaseat.ui.state.CinemaUiState
+import kotlinx.coroutines.launch
 
 @Composable
 fun CinemaCanvas(
@@ -116,6 +121,7 @@ fun CinemaCanvas(
     val currentOnSeatTap by rememberUpdatedState(onSeatTap)
 
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var fitScale by remember { mutableFloatStateOf(1f) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var initialized by remember { mutableStateOf(false) }
@@ -138,6 +144,36 @@ fun CinemaCanvas(
         )
     }
 
+    LaunchedEffect(resetTrigger) {
+        if (resetTrigger > 0 && canvasSize.width > 0 && canvasSize.height > 0) {
+            val targetScale = minOf(
+                canvasSize.width / hall.worldWidth,
+                canvasSize.height / hall.worldHeight
+            ) * 0.96f
+            val targetOffset = Offset(
+                x = (canvasSize.width - hall.worldWidth * targetScale) / 2f,
+                y = (canvasSize.height - hall.worldHeight * targetScale) / 2f
+            )
+            val startScale = scale
+            val startOffset = offset
+            launch {
+                animate(
+                    initialValue = startScale,
+                    targetValue = targetScale,
+                    animationSpec = tween(350)
+                ) { value, _ -> scale = value }
+            }
+            launch {
+                animate(
+                    typeConverter = Offset.VectorConverter,
+                    initialValue = startOffset,
+                    targetValue = targetOffset,
+                    animationSpec = tween(350)
+                ) { value, _ -> offset = value }
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -146,7 +182,7 @@ fun CinemaCanvas(
             .onSizeChanged { newSize ->
                 canvasSize = newSize
                 if (newSize.width > 0 && newSize.height > 0) {
-                    val fitScale = minOf(
+                    fitScale = minOf(
                         newSize.width / hall.worldWidth,
                         newSize.height / hall.worldHeight
                     ) * 0.96f
@@ -166,10 +202,6 @@ fun CinemaCanvas(
             .pointerInput(hall) {
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     if (canvasSize.width <= 0 || canvasSize.height <= 0) return@detectTransformGestures
-                    val fitScale = minOf(
-                        canvasSize.width / hall.worldWidth,
-                        canvasSize.height / hall.worldHeight
-                    ) * 0.96f
                     val minScale = (fitScale * 0.75f).coerceAtLeast(0.2f)
                     val maxScale = (fitScale * 3.5f).coerceAtLeast(2.0f)
 
@@ -229,9 +261,10 @@ fun CinemaCanvas(
                             SeatType.COUPLE -> Color(0xFFFCE2F0) to Color(0xFFC2185B)
                         }
                     }
+                    val alpha = if (uiState.matchesFilter(seat)) 1f else 0.2f
 
                     drawRoundRect(
-                        color = fillColor,
+                        color = fillColor.copy(alpha = alpha),
                         topLeft = seat.bounds.topLeft,
                         size = seat.bounds.size,
                         cornerRadius = seatCorner
@@ -240,7 +273,7 @@ fun CinemaCanvas(
                     val textResult = seatTextLayouts[seat.id] ?: continue
                     drawText(
                         textLayoutResult = textResult,
-                        color = textColor,
+                        color = textColor.copy(alpha = alpha),
                         topLeft = Offset(
                             x = seat.bounds.center.x - textResult.size.width / 2f,
                             y = seat.bounds.center.y - textResult.size.height / 2f
