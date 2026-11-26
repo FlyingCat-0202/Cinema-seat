@@ -58,8 +58,15 @@ fun CinemaCanvas(
     val seatCorner = remember { CornerRadius(8f, 8f) }
     val borderStroke = remember { Stroke(width = 2.5f) }
     val textMeasurer = rememberTextMeasurer()
-    val screenPath = remember { Path() }
     val screenStroke = remember { Stroke(width = 10f, cap = StrokeCap.Round) }
+
+    val screenPath = remember(hall) {
+        Path().apply {
+            val screen = hall.screenBounds
+            moveTo(screen.left, screen.bottom)
+            quadraticTo(screen.center.x, screen.top - 10f, screen.right, screen.bottom)
+        }
+    }
 
     val seatTextStyle = remember(density) {
         val fontSp = with(density) { 19f.toSp() }
@@ -82,6 +89,24 @@ fun CinemaCanvas(
             fontWeight = FontWeight.SemiBold,
             letterSpacing = with(density) { 1.5f.toSp() }
         )
+    }
+
+    val screenLabel = remember(textMeasurer, screenTextStyle) {
+        textMeasurer.measure("MÀN HÌNH", style = screenTextStyle)
+    }
+    val exitText = remember(textMeasurer, entranceTextStyle) {
+        textMeasurer.measure("LỐI RA", style = entranceTextStyle)
+    }
+    val entryText = remember(textMeasurer, entranceTextStyle) {
+        textMeasurer.measure("LỐI VÀO", style = entranceTextStyle)
+    }
+    val aisleText = remember(textMeasurer, entranceTextStyle) {
+        textMeasurer.measure("LỐI ĐI", style = entranceTextStyle)
+    }
+    val seatTextLayouts = remember(hall, textMeasurer, seatTextStyle) {
+        hall.seats.associate { seat ->
+            seat.id to textMeasurer.measure(text = seat.code, style = seatTextStyle)
+        }
     }
 
     val monoarrow = rememberVectorPainter(ImageVector.vectorResource(R.drawable.mono_direction_arrow))
@@ -179,15 +204,11 @@ fun CinemaCanvas(
                 scale(scaleX = scale, scaleY = scale, pivot = Offset.Zero)
             }) {
                 val screen = hall.screenBounds
-                screenPath.reset()
-                screenPath.moveTo(screen.left, screen.bottom)
-                screenPath.quadraticTo(screen.center.x, screen.top - 10f, screen.right, screen.bottom)
                 drawPath(
                     path = screenPath,
                     color = Color(0xFFD82D8B),
                     style = screenStroke
                 )
-                val screenLabel = textMeasurer.measure("MÀN HÌNH", style = screenTextStyle)
                 drawText(
                     textLayoutResult = screenLabel,
                     topLeft = Offset(
@@ -216,13 +237,10 @@ fun CinemaCanvas(
                         cornerRadius = seatCorner
                     )
 
-                    val textResult = textMeasurer.measure(
-                        text = seat.code,
-                        style = seatTextStyle.copy(color = textColor)
-                    )
-
+                    val textResult = seatTextLayouts[seat.id] ?: continue
                     drawText(
                         textLayoutResult = textResult,
+                        color = textColor,
                         topLeft = Offset(
                             x = seat.bounds.center.x - textResult.size.width / 2f,
                             y = seat.bounds.center.y - textResult.size.height / 2f
@@ -243,7 +261,6 @@ fun CinemaCanvas(
                             }
                         }
 
-                        val exitText = textMeasurer.measure("LỐI RA", style = entranceTextStyle)
                         drawText(
                             textLayoutResult = exitText,
                             topLeft = Offset(
@@ -260,7 +277,6 @@ fun CinemaCanvas(
                             }
                         }
 
-                        val entryText = textMeasurer.measure("LỐI VÀO", style = entranceTextStyle)
                         drawText(
                             textLayoutResult = entryText,
                             topLeft = Offset(
@@ -288,7 +304,6 @@ fun CinemaCanvas(
                             x = entrance.bounds.center.x + sideOffset,
                             y = entrance.bounds.center.y
                         )
-                        val aisleText = textMeasurer.measure("LỐI ĐI", style = entranceTextStyle)
 
                         rotate(degrees = rotationAngle, pivot = labelCenter) {
                             drawText(
