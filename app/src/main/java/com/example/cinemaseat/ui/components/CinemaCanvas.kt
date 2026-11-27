@@ -47,6 +47,7 @@ import com.example.cinemaseat.model.CinemaLayoutGenerator
 import com.example.cinemaseat.model.Seat
 import com.example.cinemaseat.model.SeatStatus
 import com.example.cinemaseat.model.SeatType
+import com.example.cinemaseat.model.SeatZone
 import com.example.cinemaseat.ui.state.CinemaUiState
 import kotlinx.coroutines.launch
 
@@ -107,6 +108,32 @@ fun CinemaCanvas(
     }
     val aisleText = remember(textMeasurer, entranceTextStyle) {
         textMeasurer.measure("LỐI ĐI", style = entranceTextStyle)
+    }
+    val zoneTextStyle = remember(density) {
+        val fontSp = with(density) { 17f.toSp() }
+        TextStyle(
+            fontSize = fontSp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = with(density) { 1.5f.toSp() }
+        )
+    }
+    val zoneLabels = remember(hall, textMeasurer, zoneTextStyle) {
+        SeatZone.entries.mapNotNull { zone ->
+            val zoneSeats = hall.seats.filter { it.zone == zone }
+            if (zoneSeats.isEmpty()) return@mapNotNull null
+            val minTop = zoneSeats.minOf { it.bounds.top }
+            val color = when (zone) {
+                SeatZone.STANDARD -> Color(0xFF7B3FE4)
+                SeatZone.VIP -> Color(0xFFC94A38)
+                SeatZone.COUPLE -> Color(0xFFC2185B)
+            }
+            val layout = textMeasurer.measure(zone.label, style = zoneTextStyle.copy(color = color))
+            val topLeft = Offset(
+                x = hall.worldWidth / 2f - layout.size.width / 2f,
+                y = minTop - layout.size.height - 10f
+            )
+            layout to topLeft
+        }
     }
     val seatTextLayouts = remember(hall, textMeasurer, seatTextStyle) {
         hall.seats.associate { seat ->
@@ -226,7 +253,7 @@ fun CinemaCanvas(
                     }
                 }
             }
-            // Pan (kéo 1 ngón) + Pinch-to-Zoom (2 ngón quanh tâm centroid)
+            // Pan + Pinch-to-Zoom
             .pointerInput(hall) {
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     if (canvasSize.width <= 0 || canvasSize.height <= 0) return@detectTransformGestures
@@ -242,7 +269,7 @@ fun CinemaCanvas(
                     offset = clampOffset(rawOffset, newScale, canvasSize)
                 }
             }
-            // Tap Hit-testing: chạm chọn ghế chuẩn xác sau khi Pan hoặc Zoom
+            // Tap Hit-testing
             .pointerInput(hall) {
                 detectTapGestures { tapOffset ->
                     val worldPoint = Offset(
@@ -277,6 +304,14 @@ fun CinemaCanvas(
                     )
                 )
 
+                // Nhãn phân khu
+                for ((labelLayout, labelPos) in zoneLabels) {
+                    drawText(
+                        textLayoutResult = labelLayout,
+                        topLeft = labelPos
+                    )
+                }
+
                 for (seat in hall.seats) {
                     val status = seat.effectiveStatus(uiState.selectedSeatIds)
                     val (fillColor, textColor) = when (status) {
@@ -308,7 +343,6 @@ fun CinemaCanvas(
                         )
                     )
 
-                    // Vẽ viền xanh dương nổi bật khi ghế đang được định vị từ Bottom Sheet
                     if (seat.id == uiState.highlightedSeatId) {
                         drawRoundRect(
                             color = Color(0xFF2563EB),

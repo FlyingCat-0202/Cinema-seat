@@ -48,7 +48,7 @@ object CinemaLayoutGenerator {
             bottom = 104f
         )
 
-        var currentY = 215f
+        var currentY = 232f
 
         // --- KHU 1: GHẾ THƯỜNG (Hàng A, B, C - 3 hàng x 15 = 45 ghế) ---
         val standardRows = listOf("A", "B", "C")
@@ -64,8 +64,8 @@ object CinemaLayoutGenerator {
             currentY += SEAT_HEIGHT + ROW_GAP_Y
         }
 
-        // Khoảng phân cách nhẹ giữa khu Thường và khu VIP
-        currentY += 16f
+        // Khoảng phân cách giữa khu Thường và khu VIP (đủ chỗ cho nhãn phân khu)
+        currentY += 36f
 
         // --- KHU 2: GHẾ VIP (Hàng D, E, F, G, H, J, K, L - 8 hàng x 15 = 120 ghế) ---
         val vipRows = listOf("D", "E", "F", "G", "H", "J", "K", "L")
@@ -81,8 +81,8 @@ object CinemaLayoutGenerator {
             currentY += SEAT_HEIGHT + ROW_GAP_Y
         }
 
-        // Khoảng phân cách nhẹ giữa khu VIP và khu Ghế Đôi
-        currentY += 18f
+        // Khoảng phân cách giữa khu VIP và khu Ghế Đôi (đủ chỗ cho nhãn phân khu)
+        currentY += 36f
 
         // --- KHU 3: GHẾ ĐÔI SWEETBOX (Hàng S - 9 ghế đôi trải đều dưới cùng) ---
         val coupleCount = 9
