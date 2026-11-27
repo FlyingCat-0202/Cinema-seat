@@ -14,9 +14,6 @@ enum class SeatType(val label: String, val defaultPrice: Int) {
 
 /**
  * Trạng thái của một ghế.
- * Lưu ý: Trạng thái gốc của ghế chỉ là AVAILABLE, BOOKED hoặc UNAVAILABLE.
- * Trạng thái SELECTED được quản lý tập trung qua danh sách ghế đang chọn trong ViewModel
- * để khi bỏ chọn luôn quay về đúng trạng thái trước đó.
  */
 enum class SeatStatus(val label: String) {
     AVAILABLE("Trống"),

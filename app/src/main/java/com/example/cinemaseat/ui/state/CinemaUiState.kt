@@ -6,7 +6,7 @@ import com.example.cinemaseat.model.SeatStatus
 import com.example.cinemaseat.model.SeatType
 
 /**
- * Yêu cầu di chuyển camera tới một ghế cụ thể (khi bấm vào mục trong Bottom Sheet).
+ * Yêu cầu di chuyển camera tới một ghế cụ thể.
  */
 data class CameraFocusRequest(
     val seatId: String,

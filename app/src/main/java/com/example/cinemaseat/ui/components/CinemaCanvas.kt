@@ -174,6 +174,34 @@ fun CinemaCanvas(
         }
     }
 
+    LaunchedEffect(uiState.focusRequest) {
+        val request = uiState.focusRequest ?: return@LaunchedEffect
+        if (canvasSize.width <= 0 || canvasSize.height <= 0) return@LaunchedEffect
+        val targetSeat = hall.seats.firstOrNull { it.id == request.seatId } ?: return@LaunchedEffect
+        val targetScale = maxOf(scale, fitScale * 2f).coerceAtMost(fitScale * 3.5f)
+        val seatCenter = targetSeat.bounds.center
+        val rawOffset = Offset(
+            x = canvasSize.width / 2f - seatCenter.x * targetScale,
+            y = canvasSize.height / 2f - seatCenter.y * targetScale
+        )
+
+        launch {
+            animate(
+                initialValue = scale,
+                targetValue = targetScale,
+                animationSpec = tween(350)
+            ) { value, _ -> scale = value }
+        }
+        launch {
+            animate(
+                typeConverter = Offset.VectorConverter,
+                initialValue = offset,
+                targetValue = clampOffset(rawOffset, targetScale, canvasSize),
+                animationSpec = tween(350)
+            ) { value, _ -> offset = value }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -279,6 +307,17 @@ fun CinemaCanvas(
                             y = seat.bounds.center.y - textResult.size.height / 2f
                         )
                     )
+
+                    // Vẽ viền xanh dương nổi bật khi ghế đang được định vị từ Bottom Sheet
+                    if (seat.id == uiState.highlightedSeatId) {
+                        drawRoundRect(
+                            color = Color(0xFF2563EB),
+                            topLeft = seat.bounds.topLeft,
+                            size = seat.bounds.size,
+                            cornerRadius = seatCorner,
+                            style = borderStroke
+                        )
+                    }
                 }
 
                 for (entrance in hall.entrances) {

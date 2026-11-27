@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cinemaseat.ui.components.BottomSheet
 import com.example.cinemaseat.ui.components.CinemaCanvas
 import com.example.cinemaseat.ui.components.FilterDropdownOverlay
 import com.example.cinemaseat.ui.components.FilterHeader
@@ -63,7 +65,14 @@ fun CinemaMainScreen(
                 onClearFilters = viewModel::clearFilters,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
+
         }
+        BottomSheet(
+            uiState = uiState,
+            onRemoveSelectedSeat = viewModel::removeSelectedSeat,
+            onClearAllSelectedSeats = viewModel::clearAllSelectedSeats,
+            onFocusOnSeat = viewModel::focusOnSeat,
+        )
     }
 }
 
