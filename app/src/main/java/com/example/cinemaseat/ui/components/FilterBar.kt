@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cinemaseat.model.CinemaLayoutGenerator
@@ -52,7 +53,8 @@ import com.example.cinemaseat.ui.state.CinemaUiState
 
 @Composable
 fun FilterHeader(
-    hasActiveFilter: Boolean,
+    selectedTypeFilter: SeatType?,
+    selectedStatusFilter: SeatStatus?,
     isFilterExpanded: Boolean,
     onToggleFilterPanel: () -> Unit,
     onResetView: () -> Unit,
@@ -60,6 +62,11 @@ fun FilterHeader(
 ) {
     val baseColor = Color(0xFFD82D8B)
     val headerBg = Color(0xFFFDE8F3)
+    val hasActiveFilter = selectedTypeFilter != null || selectedStatusFilter != null
+    val activeFilterText = listOfNotNull(
+        selectedTypeFilter?.label,
+        selectedStatusFilter?.label
+    ).joinToString(" · ")
 
     Row(
         modifier = modifier
@@ -85,13 +92,26 @@ fun FilterHeader(
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        Text(
-            text = "Rạp chiếu phim HCMUS",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFF1F2937),
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Rạp chiếu phim HCMUS",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF1F2937),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (activeFilterText.isNotEmpty()) {
+                Text(
+                    text = activeFilterText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = baseColor,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
 
         //  Icon Filter | Icon Reset View
         Surface(
@@ -276,7 +296,8 @@ private fun FilterBarPreview() {
     val hall = remember { CinemaLayoutGenerator.createSampleHall() }
     Column {
         FilterHeader(
-            hasActiveFilter = true,
+            selectedTypeFilter = SeatType.VIP,
+            selectedStatusFilter = SeatStatus.AVAILABLE,
             isFilterExpanded = true,
             onToggleFilterPanel = {},
             onResetView = {}

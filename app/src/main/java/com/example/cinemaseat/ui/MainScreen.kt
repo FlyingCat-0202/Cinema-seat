@@ -43,7 +43,8 @@ fun CinemaMainScreen(
             .navigationBarsPadding()
     ) {
         FilterHeader(
-            hasActiveFilter = uiState.hasActiveFilter,
+            selectedTypeFilter = uiState.selectedTypeFilter,
+            selectedStatusFilter = uiState.selectedStatusFilter,
             isFilterExpanded = isFilterExpanded,
             onToggleFilterPanel = { isFilterExpanded = !isFilterExpanded },
             onResetView = { resetTrigger++ }

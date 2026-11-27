@@ -15,12 +15,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -49,7 +51,16 @@ import com.example.cinemaseat.model.SeatStatus
 import com.example.cinemaseat.model.SeatType
 import com.example.cinemaseat.model.SeatZone
 import com.example.cinemaseat.ui.state.CinemaUiState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+private const val SEAT_CORNER_RADIUS = 8f
+private val SELECTED_SEAT_COLORS = Color(0xFFD82D8B) to Color.White
+private val BOOKED_SEAT_COLORS = Color(0xFFDBEAFE) to Color(0xFF2563EB)
+private val UNAVAILABLE_SEAT_COLORS = Color(0xFFF3F4F6) to Color(0xFFD1D5DB)
+private val STANDARD_SEAT_COLORS = Color(0xFFEDE2FF) to Color(0xFF7B3FE4)
+private val VIP_SEAT_COLORS = Color(0xFFFCD5CE) to Color(0xFFC94A38)
+private val COUPLE_SEAT_COLORS = Color(0xFFFCE2F0) to Color(0xFFC2185B)
 
 @Composable
 fun CinemaCanvas(
@@ -61,7 +72,7 @@ fun CinemaCanvas(
     val hall = uiState.hallLayout
 
     val density = LocalDensity.current
-    val seatCorner = remember { CornerRadius(8f, 8f) }
+    val seatCorner = remember { CornerRadius(SEAT_CORNER_RADIUS, SEAT_CORNER_RADIUS) }
     val borderStroke = remember { Stroke(width = 2.5f) }
     val textMeasurer = rememberTextMeasurer()
     val screenStroke = remember { Stroke(width = 10f, cap = StrokeCap.Round) }
@@ -152,6 +163,8 @@ fun CinemaCanvas(
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var initialized by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    var cameraAnimJob by remember { mutableStateOf<Job?>(null) }
 
     fun clampOffset(candidate: Offset, targetScale: Float, size: IntSize): Offset {
         if (size.width <= 0 || size.height <= 0) return candidate
@@ -173,6 +186,7 @@ fun CinemaCanvas(
 
     LaunchedEffect(resetTrigger) {
         if (resetTrigger > 0 && canvasSize.width > 0 && canvasSize.height > 0) {
+            cameraAnimJob?.cancel()
             val targetScale = minOf(
                 canvasSize.width / hall.worldWidth,
                 canvasSize.height / hall.worldHeight
@@ -183,6 +197,42 @@ fun CinemaCanvas(
             )
             val startScale = scale
             val startOffset = offset
+            cameraAnimJob = coroutineScope.launch {
+                launch {
+                    animate(
+                        initialValue = startScale,
+                        targetValue = targetScale,
+                        animationSpec = tween(350)
+                    ) { value, _ -> scale = value }
+                }
+                launch {
+                    animate(
+                        typeConverter = Offset.VectorConverter,
+                        initialValue = startOffset,
+                        targetValue = targetOffset,
+                        animationSpec = tween(350)
+                    ) { value, _ -> offset = value }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.focusRequest) {
+        val request = uiState.focusRequest ?: return@LaunchedEffect
+        if (canvasSize.width <= 0 || canvasSize.height <= 0) return@LaunchedEffect
+        val targetSeat = hall.seats.firstOrNull { it.id == request.seatId } ?: return@LaunchedEffect
+        cameraAnimJob?.cancel()
+        val targetScale = maxOf(scale, fitScale * 2f).coerceAtMost(fitScale * 3.5f)
+        val seatCenter = targetSeat.bounds.center
+        val rawOffset = Offset(
+            x = canvasSize.width / 2f - seatCenter.x * targetScale,
+            y = canvasSize.height / 2f - seatCenter.y * targetScale
+        )
+        val startScale = scale
+        val startOffset = offset
+        val clampedTargetOffset = clampOffset(rawOffset, targetScale, canvasSize)
+
+        cameraAnimJob = coroutineScope.launch {
             launch {
                 animate(
                     initialValue = startScale,
@@ -194,38 +244,10 @@ fun CinemaCanvas(
                 animate(
                     typeConverter = Offset.VectorConverter,
                     initialValue = startOffset,
-                    targetValue = targetOffset,
+                    targetValue = clampedTargetOffset,
                     animationSpec = tween(350)
                 ) { value, _ -> offset = value }
             }
-        }
-    }
-
-    LaunchedEffect(uiState.focusRequest) {
-        val request = uiState.focusRequest ?: return@LaunchedEffect
-        if (canvasSize.width <= 0 || canvasSize.height <= 0) return@LaunchedEffect
-        val targetSeat = hall.seats.firstOrNull { it.id == request.seatId } ?: return@LaunchedEffect
-        val targetScale = maxOf(scale, fitScale * 2f).coerceAtMost(fitScale * 3.5f)
-        val seatCenter = targetSeat.bounds.center
-        val rawOffset = Offset(
-            x = canvasSize.width / 2f - seatCenter.x * targetScale,
-            y = canvasSize.height / 2f - seatCenter.y * targetScale
-        )
-
-        launch {
-            animate(
-                initialValue = scale,
-                targetValue = targetScale,
-                animationSpec = tween(350)
-            ) { value, _ -> scale = value }
-        }
-        launch {
-            animate(
-                typeConverter = Offset.VectorConverter,
-                initialValue = offset,
-                targetValue = clampOffset(rawOffset, targetScale, canvasSize),
-                animationSpec = tween(350)
-            ) { value, _ -> offset = value }
         }
     }
 
@@ -257,6 +279,7 @@ fun CinemaCanvas(
             .pointerInput(hall) {
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     if (canvasSize.width <= 0 || canvasSize.height <= 0) return@detectTransformGestures
+                    cameraAnimJob?.cancel()
                     val minScale = (fitScale * 0.75f).coerceAtLeast(0.2f)
                     val maxScale = (fitScale * 3.5f).coerceAtLeast(2.0f)
 
@@ -277,7 +300,7 @@ fun CinemaCanvas(
                         y = (tapOffset.y - offset.y) / scale
                     )
                     val hitSeat = currentUiState.hallLayout.seats.firstOrNull { seat ->
-                        seat.bounds.contains(worldPoint)
+                        seat.bounds.containsRounded(worldPoint, SEAT_CORNER_RADIUS)
                     }
                     if (hitSeat != null) {
                         currentOnSeatTap(hitSeat)
@@ -314,16 +337,18 @@ fun CinemaCanvas(
 
                 for (seat in hall.seats) {
                     val status = seat.effectiveStatus(uiState.selectedSeatIds)
-                    val (fillColor, textColor) = when (status) {
-                        SeatStatus.SELECTED -> Color(0xFFD82D8B) to Color.White
-                        SeatStatus.BOOKED -> Color(0xFFDBEAFE) to Color(0xFF2563EB)
-                        SeatStatus.UNAVAILABLE -> Color(0xFFF3F4F6) to Color(0xFFD1D5DB)
+                    val seatColors = when (status) {
+                        SeatStatus.SELECTED -> SELECTED_SEAT_COLORS
+                        SeatStatus.BOOKED -> BOOKED_SEAT_COLORS
+                        SeatStatus.UNAVAILABLE -> UNAVAILABLE_SEAT_COLORS
                         SeatStatus.AVAILABLE -> when (seat.type) {
-                            SeatType.STANDARD -> Color(0xFFEDE2FF) to Color(0xFF7B3FE4)
-                            SeatType.VIP -> Color(0xFFFCD5CE) to Color(0xFFC94A38)
-                            SeatType.COUPLE -> Color(0xFFFCE2F0) to Color(0xFFC2185B)
+                            SeatType.STANDARD -> STANDARD_SEAT_COLORS
+                            SeatType.VIP -> VIP_SEAT_COLORS
+                            SeatType.COUPLE -> COUPLE_SEAT_COLORS
                         }
                     }
+                    val fillColor = seatColors.first
+                    val textColor = seatColors.second
                     val alpha = if (uiState.matchesFilter(seat)) 1f else 0.2f
 
                     drawRoundRect(
@@ -427,6 +452,22 @@ fun CinemaCanvas(
             }
         }
     }
+}
+
+private fun Rect.containsRounded(point: Offset, cornerRadius: Float): Boolean {
+    if (!contains(point)) return false
+    val r = cornerRadius.coerceAtMost(minOf(width, height) / 2f)
+    val dx = when {
+        point.x < left + r -> (left + r) - point.x
+        point.x > right - r -> point.x - (right - r)
+        else -> 0f
+    }
+    val dy = when {
+        point.y < top + r -> (top + r) - point.y
+        point.y > bottom - r -> point.y - (bottom - r)
+        else -> 0f
+    }
+    return dx * dx + dy * dy <= r * r
 }
 
 @Preview(showBackground = true, widthDp = 400, heightDp = 520)
