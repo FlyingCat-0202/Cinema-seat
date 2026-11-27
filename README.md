@@ -24,7 +24,7 @@
 ## 3. Hướng dẫn chạy ứng dụng
 
 1. Clone repository về máy rồi mở thư mục dự án bằng Android Studio.
-2. Trong SDK Manager, cài Android SDK Platform 37. Chọn JDK đi kèm Android Studio để chạy Gradle và chờ dự án đồng bộ xong.
+2. Trong SDK Manager, cài **Android SDK Platform 37**. Dự án dùng **JDK 25** để chạy Gradle. Nếu Android Studio yêu cầu tải thêm JDK hoặc SDK, hãy hoàn tất cài đặt rồi chờ Gradle Sync chạy xong.
 3. Chọn máy ảo hoặc điện thoại chạy Android 7.0 (API 24) trở lên, sau đó nhấn **Run** để mở màn hình chọn ghế.
 
 ## 4. Cấu trúc mã nguồn
