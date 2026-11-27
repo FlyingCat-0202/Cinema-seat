@@ -1,81 +1,104 @@
 # Ứng dụng Sơ đồ Phòng Chiếu Rạp Phim Tương Tác (Cinema Seat Map)
 
 Đồ án Giữa kỳ - Học phần: Phát triển phần mềm cho thiết bị di động
+
 Đề tài 02: Sơ đồ phòng chiếu rạp phim (Màn hình, lối đi, ghế thường, ghế VIP, ghế đôi và trạng thái đặt vé)
 
 ---
 
 ## 1. Mô tả đề tài
-Ứng dụng Android (Kotlin + Jetpack Compose) mô phỏng sơ đồ phòng chiếu rạp phim theo phong cách MoMo/CGV với 178 đối tượng được vẽ hoàn toàn trên 1 bề mặt Canvas duy nhất:
+Ứng dụng Android (Kotlin + Jetpack Compose) mô phỏng sơ đồ phòng chiếu rạp phim với 178 đối tượng được vẽ hoàn toàn trên 1 bề mặt Canvas duy nhất:
 - 174 ghế phân theo 3 phân khu rõ ràng:
   - Khu Ghế Thường (hàng A-C, 3 hàng x 15 ghế): 45 ghế (75.000đ)
   - Khu Ghế VIP (hàng D-L, bỏ I, 8 hàng x 15 ghế): 120 ghế (110.000đ)
   - Khu Ghế Đôi (hàng S, 9 ghế đôi): 9 ghế (190.000đ)
 - 1 Màn hình chiếu cong kèm nhãn MÀN HÌNH.
 - 3 Lối đi (Entrance): Hành lang ngang RA / VÀO phía trên kèm mũi tên 1 chiều, và 2 lối đi dọc hai bên kèm mũi tên 2 chiều + nhãn xoay dọc LỐI ĐI.
-- 4 Trạng thái trực quan: Trống (AVAILABLE - phân màu theo loại ghế), Đang chọn (SELECTED - hồng cánh sen, chữ trắng), Đã đặt (BOOKED - xanh dương nhạt), Không khả dụng (UNAVAILABLE - xám mờ).
-- Công cụ hỗ trợ và Tương tác: Pan (có giới hạn biên), Pinch-to-Zoom quanh tâm 2 ngón, Hit-testing chính xác sau Pan/Zoom, Bộ lọc (Loại ghế và Trạng thái), Bảng chú thích (Legend), Reset View mượt, Expandable Bottom Sheet đồng bộ 2 chiều (chọn/xóa/định vị ghế) và giữ nguyên trạng thái khi xoay màn hình.
+- 4 trạng thái: Trống (AVAILABLE), Đang chọn (SELECTED), Đã đặt (BOOKED), Không khả dụng (UNAVAILABLE).
+- Công cụ hỗ trợ và tương tác: Pan (có giới hạn biên), Pinch-to-Zoom quanh tâm 2 ngón, Hit-testing chính xác sau Pan/Zoom, Bộ lọc (Loại ghế và Trạng thái), Bảng chú thích (Legend), Reset View mượt, Expandable Bottom Sheet đồng bộ 2 chiều (chọn/xóa/định vị ghế) và giữ nguyên trạng thái khi xoay màn hình.
 
 ## 2. Video minh họa
-- Đường dẫn video demo (01-05 phút): <CHÈN_LINK_VIDEO_DEMO_CỦA_BẠN_VÀO_ĐÂY>
+- [Video demo google drive](https://drive.google.com/file/d/1L4SuIHdEbmVDi1Zje1n5ynTVBdZbmzBm/view?usp=sharing)
+- [Link dự phòng qua youtube](https://youtu.be/ZPx6TYrDfic)
 
 ## 3. Hướng dẫn chạy ứng dụng
-- Môi trường: Android Studio (JDK 11 trở lên), Android SDK compileSdk = 37, minSdk = 24.
-- Các bước chạy:
-  1. Clone repository về máy và mở thư mục dự án bằng Android Studio.
-  2. Chờ Gradle Sync hoàn tất.
-  3. Chọn Emulator hoặc thiết bị Android thật (API >= 24) và nhấn Run (Shift + F10).
-  4. Mẹo test Pinch-to-Zoom trên Emulator: Giữ phím Ctrl (hoặc Cmd trên macOS) và click kéo chuột trên màn hình sơ đồ.
 
-## 4. Kiến trúc mã nguồn và Cách tổ chức dữ liệu
-Ứng dụng áp dụng kiến trúc UDF (Unidirectional Data Flow) tách biệt hoàn toàn 3 lớp Dữ liệu (model/) - Trạng thái (ui/state/) - Giao diện (ui/):
+1. Clone repository về máy rồi mở thư mục dự án bằng Android Studio.
+2. Trong SDK Manager, cài Android SDK Platform 37. Chọn JDK đi kèm Android Studio để chạy Gradle và chờ dự án đồng bộ xong.
+3. Chọn máy ảo hoặc điện thoại chạy Android 7.0 (API 24) trở lên, sau đó nhấn **Run** để mở màn hình chọn ghế.
 
-    app/src/main/java/com/example/cinemaseat/
-    ├── MainActivity.kt                      // Khởi chạy ứng dụng, bật edge-to-edge
-    ├── model/
-    │   ├── SeatModels.kt                    // SeatType, SeatStatus, SeatZone, Seat, Entrance, CinemaHallLayout
-    │   └── CinemaLayoutGenerator.kt         // Sinh dữ liệu giả lập 178 đối tượng với tọa độ World cố định
-    └── ui/
-        ├── MainScreen.kt                    // Ghép FilterHeader, CinemaCanvas, FilterDropdownOverlay và BottomSheet
-        ├── state/
-        │   ├── CinemaUiState.kt             // State tổng bất biến + logic lọc matchesFilter, tính totalPrice
-        │   └── CinemaViewModel.kt           // Quản lý chọn/bỏ chọn ghế, lọc, định vị ghế; sống sót khi xoay màn hình
-        └── components/
-            ├── CinemaCanvas.kt              // 1 Canvas duy nhất vẽ toàn bộ sơ đồ + Pan/Zoom/Hit-testing/Animation
-            ├── FilterBar.kt                 // FilterHeader (tiêu đề + nút Filter/Reset View) & FilterDropdownOverlay
-            └── BottomSheet.kt               // LegendRow + bảng danh sách ghế đã chọn mở rộng/thu gọn + nút Tiếp tục
+## 4. Cấu trúc mã nguồn
 
-- Tách dữ liệu khỏi lớp vẽ: Mỗi ghế là một Seat lưu sẵn tọa độ hình học bounds: Rect trong hệ tọa độ World, type, baseStatus, price. Trạng thái đang chọn được quản lý bằng tập hợp selectedSeatIds: Set<String> trong CinemaUiState, kết hợp hàm effectiveStatus(selectedSeatIds) để khi bỏ chọn luôn quay về đúng baseStatus ban đầu và không bị trùng lặp.
+```text
+app/src/main/java/com/example/cinemaseat/
+├── MainActivity.kt                # Khởi tạo ứng dụng và mở màn hình chọn ghế.
+├── model/
+│   ├── CinemaLayoutGenerator.kt   # Tạo sơ đồ mẫu gồm 174 ghế, màn chiếu và các lối đi.
+│   └── SeatModels.kt              # Định nghĩa dữ liệu ghế, lối đi và phòng chiếu.
+└── ui/
+    ├── MainScreen.kt              # Bố trí bộ lọc, sơ đồ ghế và bảng ghế đã chọn.
+    ├── components/
+    │   ├── BottomSheet.kt         # Hiển thị chú thích, danh sách ghế đã chọn và tổng tiền.
+    │   ├── CinemaCanvas.kt        # Vẽ sơ đồ, xử lý kéo, thu phóng và xác định ghế được chạm.
+    │   └── FilterBar.kt           # Hiển thị bộ lọc loại ghế, trạng thái ghế và nút đặt lại góc nhìn.
+    ├── state/
+    │   ├── CinemaUiState.kt       # Định nghĩa trạng thái màn hình, gồm ghế đã chọn, bộ lọc và yêu cầu định vị.
+    │   └── CinemaViewModel.kt     # Cập nhật trạng thái khi chọn, bỏ chọn, lọc hoặc định vị ghế.
+    └── theme/
+        ├── Color.kt               # Khai báo màu dùng cho giao diện sáng và tối.
+        ├── Theme.kt               # Áp dụng bảng màu và kiểu chữ cho giao diện.
+        └── Type.kt                # Khai báo kiểu chữ mặc định của ứng dụng.
+```
 
-## 5. Công thức chuyển đổi tọa độ và Phương pháp Hit-testing
-Toàn bộ sơ đồ được định nghĩa trong hệ tọa độ gốc (World Coordinates: worldWidth x worldHeight) và hiển thị lên màn hình (Screen Coordinates) trong CinemaCanvas.kt:
+## 5. Chuyển đổi tọa độ và xác định ghế được chạm
 
-1. Co vừa khít mặc định (fitScale):
-   fitScale = min(canvasWidth / worldWidth, canvasHeight / worldHeight) * 0.96
-   offsetDefault = ((canvasWidth - worldWidth * fitScale) / 2, (canvasHeight - worldHeight * fitScale) / 2)
+Mỗi ghế có vị trí cố định trên sơ đồ (`world`). Vị trí của ghế trên Canvas (`screen`) phụ thuộc vào tỷ lệ thu phóng `scale` và độ dịch chuyển `offset` tính bằng pixel.
 
-2. World -> Screen (khi vẽ bằng withTransform):
-   screenX = offset.x + worldX * scale
-   screenY = offset.y + worldY * scale
+### Khi vẽ và khi chạm
 
-3. Pinch-to-Zoom quanh tâm 2 ngón (centroid) và Pan:
-   newScale = clamp(oldScale * zoom, minScale, maxScale)   // minScale = fitScale * 0.75, maxScale = fitScale * 3.5
-   zoomRatio = newScale / oldScale
-   rawOffset = centroid - (centroid - offset) * zoomRatio + pan
-   offset = clampOffset(rawOffset, newScale, canvasSize)   // Luôn giữ tối thiểu biên an toàn trong khung nhìn
+| Thao tác | Tọa độ X | Tọa độ Y |
+| --- | --- | --- |
+| Vẽ ghế từ sơ đồ lên Canvas | `screenX = worldX × scale + offsetX` | `screenY = worldY × scale + offsetY` |
+| Đổi điểm chạm về sơ đồ | `worldX = (screenX − offsetX) / scale` | `worldY = (screenY − offsetY) / scale` |
 
-4. Screen -> World và Hit-testing (khi chạm chọn ghế tại tapOffset):
-   worldX = (tapOffset.x - offset.x) / scale
-   worldY = (tapOffset.y - offset.y) / scale
-   hitSeat = hall.seats.firstOrNull { seat -> seat.bounds.contains(Offset(worldX, worldY)) }
+Khi người dùng chạm, ứng dụng dùng `scale` và `offset` hiện tại để đổi điểm chạm về sơ đồ. Hàm `containsRounded` kiểm tra điểm đó có nằm trong hình chữ nhật bo góc của ghế hay không.
 
-Nhờ biến đổi ngược trực tiếp từ cùng offset và scale đang dùng để vẽ, kết quả hit-testing chính xác tới từng pixel sát mép ghế sau mọi thao tác Pan và Zoom.
+### Khi mở sơ đồ hoặc nhấn Reset View
 
-## 6. Quản lý trạng thái và Tối ưu hiệu năng
-- Quản lý trạng thái: CinemaViewModel giữ StateFlow<CinemaUiState> nên khi xoay dọc/ngang màn hình, toàn bộ danh sách ghế đang chọn và bộ lọc được bảo toàn nguyên vẹn; trạng thái đóng/mở bảng lọc và Bottom Sheet dùng rememberSaveable. Canvas, Bộ lọc và Bottom Sheet cùng đọc một nguồn dữ liệu uiState, đảm bảo đồng bộ hai chiều tức thì.
-- Tối ưu hiệu năng:
-  - Toàn bộ Path (screenPath), Stroke, CornerRadius, TextMeasurer, VectorPainter (monoarrow, biarrow) và các TextLayoutResult (screenLabel, exitText, entryText, aisleText, zoneLabels, seatTextLayouts) được tính toán và lưu trữ một lần ở ngoài Canvas bằng remember(...).
-  - Bên trong Canvas { ... } không cấp phát thêm đối tượng đồ họa nặng hay đo lại chữ mỗi khung hình, giúp thao tác Pan, Zoom và animation (tween(350)) phản hồi mượt mà.
+Ứng dụng chọn tỷ lệ vừa cả chiều rộng lẫn chiều cao, thu thêm 4% để chừa lề rồi căn giữa sơ đồ.
+
+```text
+fitScale = 0.96 × min(canvasWidth / worldWidth, canvasHeight / worldHeight)
+
+offsetX = (canvasWidth  − worldWidth  × fitScale) / 2
+offsetY = (canvasHeight − worldHeight × fitScale) / 2
+```
+
+### Khi kéo hoặc thu phóng bằng hai ngón
+
+`zoom` là hệ số thu phóng của bước cử chỉ hiện tại. `centroid` là tâm hai ngón tay và `pan` là độ dịch chuyển của cử chỉ trên Canvas.
+
+```text
+minScale = max(0.75 × fitScale, 0.2)
+maxScale = max(3.5  × fitScale, 2.0)
+newScale = clamp(oldScale × zoom, minScale, maxScale)
+```
+
+Ứng dụng điều chỉnh độ dịch chuyển quanh tâm hai ngón, cộng phần kéo, rồi giới hạn vị trí để sơ đồ vẫn nằm trong tầm nhìn. Công thức dưới đây áp dụng cho cả hai trục.
+
+```text
+zoomRatio = newScale / oldScale
+rawOffset = centroid − (centroid − offset) × zoomRatio + pan
+newOffset = clampOffset(rawOffset, newScale, canvasSize)
+```
+
+## 6. Quản lý trạng thái và tối ưu hiệu năng
+
+**Đồng bộ lựa chọn:** Khi người dùng chạm vào một ghế trống, `CinemaViewModel` cập nhật `CinemaUiState` qua `StateFlow`. Canvas đọc trạng thái mới để đổi màu ghế, còn Bottom Sheet cập nhật danh sách và tổng tiền. Nếu người dùng xóa ghế ngay trong Bottom Sheet, thay đổi đó cũng hiển thị trên sơ đồ.
+
+**Khi xoay màn hình:** Danh sách ghế đã chọn và bộ lọc nằm trong `ViewModel`, nên người dùng có thể xoay máy rồi tiếp tục chọn ghế. Bảng lọc và Bottom Sheet dùng `rememberSaveable` để giữ trạng thái đóng hoặc mở.
+
+**Khi kéo và thu phóng:** Vị trí ghế trên màn hình thay đổi liên tục, nhưng nội dung các nhãn ghế vẫn như cũ. Ứng dụng dùng `remember` để tái sử dụng kết quả đo chữ và đường cong màn chiếu khi dữ liệu liên quan chưa đổi. Các cặp màu theo loại ghế và trạng thái cũng được khai báo sẵn. Nhờ vậy, Canvas vẽ lại sơ đồ mà không phải đo lại 174 nhãn ghế hay tạo lại từng cặp màu ở mỗi khung hình.
 
 ---
 
